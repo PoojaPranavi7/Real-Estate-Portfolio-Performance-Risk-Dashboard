@@ -36,4 +36,4 @@
 MHC-05 Pinon Pines is the portfolio’s value-add acquisition case study. The underwriting base includes a purchase price of **$4.2M** and **$380K** of renovation CapEx, with a stabilized occupancy target of **93%**. Current average rent of **$720** indicates measurable market upside toward **$810**. The acquisition pro forma should be monitored monthly against actual occupancy, rent growth, NOI, and CapEx spend to confirm execution is tracking to plan.
 
 ## Sign-Off
-Prepared by: [Your Name] | Date: December 2024
+Prepared by: Pooja Pranavi Nalamothu | Date: May 2026
