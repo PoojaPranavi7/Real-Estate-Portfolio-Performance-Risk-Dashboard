@@ -1,10 +1,10 @@
 # Real Estate Portfolio Performance & Risk Dashboard
 
 ## Project Overview
-This project is an internal analytics tool designed for a private equity real estate firm managing manufactured housing and self-storage assets. It provides a structured view of operating performance, risk, and value creation opportunities across the portfolio. The analysis combines monthly operational and financial reporting so teams can evaluate occupancy, delinquency, NOI, expenses, CapEx execution, and acquisition upside in one place. The current model covers a 12-property portfolio with consistent reporting outputs for asset management, acquisitions, and finance.
+This project is an internal analytics solution built for a private equity real estate firm managing manufactured housing and self-storage assets. It is designed to help business teams monitor portfolio health, detect emerging risks, and prioritize value-add action. The analysis combines operational and financial performance across occupancy, delinquency, NOI, expense management, and capital execution. The model covers a 12-property portfolio and provides a practical framework for acquisition opportunity assessment and monthly performance review.
 
 ## Business Problem
-This dashboard answers three key questions:
+This dashboard answers these three key questions:
 1. Which properties are performing well?
 2. Which properties are at operational or financial risk?
 3. Where is the value-add opportunity?
@@ -26,7 +26,7 @@ This dashboard answers three key questions:
 | STG-05 | Summit Storage | Self-Storage | Salt Lake City | UT | 260 |
 
 ## Data Model
-The project uses a star schema design to support clean, repeatable analytics across property operations and financial performance.
+The project uses a star schema design that separates descriptive dimensions from measurable operational and financial facts.
 
 Dimension tables:
 - dim_property
@@ -40,19 +40,19 @@ Fact tables:
 - fact_property_financials
 - fact_capex_projects
 
-The core analytical grain is one row per property per month. This grain was chosen because asset management teams review occupancy, collections, revenue, expenses, and NOI on a recurring monthly basis, while still allowing rollups by asset type, market, state, and portfolio.
+The core analytical grain is one row per property per month. This grain was chosen because asset management teams review occupancy, collections, revenue, expenses, and NOI on a recurring monthly basis, while still allowing rollups by asset type, market, state, and full portfolio.
 
 ## Key Metrics Tracked
 | Metric | Formula | Business Purpose |
 |---|---|---|
-| Occupancy Rate | Occupied Units / Total Units | Measures demand and lease-up performance by property. |
+| Occupancy Rate | Occupied Units / Total Units | Measures property demand and lease-up effectiveness. |
 | Delinquency Rate | Past Due Amount / Rent Billed | Identifies collections risk and revenue leakage. |
-| Collection Rate | Rent Collected / Rent Billed | Tracks payment quality and billing conversion. |
-| NOI | Total Revenue - Operating Expenses | Measures operating profitability before financing. |
-| NOI Margin | NOI / Total Revenue | Compares profit efficiency across properties. |
-| Expense Ratio | Operating Expenses / Total Revenue | Flags cost pressure and operational inefficiency. |
-| Revenue per Unit | Total Revenue / Occupied Units | Evaluates revenue productivity at occupied-unit level. |
-| CapEx Variance | Actual Cost - Budgeted Cost | Monitors capital project budget discipline. |
+| Collection Rate | Rent Collected / Rent Billed | Tracks billing conversion and payment quality. |
+| NOI | Total Revenue - Operating Expenses | Measures core operating profitability. |
+| NOI Margin | NOI / Total Revenue | Compares profit efficiency across assets. |
+| Expense Ratio | Operating Expenses / Total Revenue | Highlights cost pressure and operating efficiency gaps. |
+| Revenue per Unit | Total Revenue / Occupied Units | Evaluates revenue productivity per occupied unit. |
+| CapEx Variance | Actual Cost - Budgeted Cost | Monitors project budget performance and execution discipline. |
 
 ## Key Findings
 - STG-02 SunState Storage shows healthy occupancy but rising delinquency, indicating a collections issue rather than a demand issue.
@@ -80,4 +80,4 @@ The core analytical grain is one row per property per month. This grain was chos
    `excel/portfolio_dashboard.xlsx`
 
 ## 60-Second Pitch
-For this interview, I prepared a portfolio analytics project that simulates how a private equity real estate team would monitor performance and risk across manufactured housing and self-storage assets. I structured the data model at a monthly analytical grain, one row per property per month, so the analysis aligns with how teams actually review operating results and investor reporting cycles. The dashboard applies four diagnostic lenses—occupancy, delinquency, NOI, and CapEx—to quickly surface what is performing, what is drifting, and where operational action is needed. The output is designed to be practical for acquisitions, asset management, and finance so decisions can be made faster with a shared, data-driven view of portfolio health.
+For this interview, I prepared a portfolio analytics project that demonstrates private equity real estate portfolio analytics across manufactured housing and self-storage assets. I structured the model at one row per property per month so performance can be reviewed in the same cadence used by operating and finance teams. The framework uses four diagnostic lenses—occupancy, delinquency, NOI, and CapEx—to separate demand issues from collections and cost issues, while surfacing value-add opportunity. This work matters because acquisitions, asset management, and finance all need a shared, decision-ready view of property performance to prioritize interventions and capital allocation.

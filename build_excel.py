@@ -2,6 +2,7 @@ from pathlib import Path
 
 import pandas as pd
 from openpyxl import Workbook
+from openpyxl.formatting.rule import CellIsRule
 from openpyxl.utils import get_column_letter
 from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
 
@@ -630,21 +631,26 @@ def build_dashboard_tab(
     ws["A2"].font = Font(name="Calibri", size=11, color="666666")
     ws["A2"].alignment = Alignment(horizontal="left", vertical="center")
 
-    # Section A - KPI cards
-    total_properties = int(len(properties_df))
-    total_units = int(properties_df["total_units"].sum())
-    portfolio_avg_occ = occ_latest["occupied_units"].sum() / occ_latest["total_units"].sum()
-    total_monthly_noi = float(fin_latest["noi"].sum())
-    avg_delinquency = dlq_latest["past_due_amount"].sum() / dlq_latest["rent_billed"].sum()
-    total_aum = float(properties_df["purchase_price"].sum())
-
+    # Section A - KPI cards (formula-driven where practical)
     kpis = [
-        ("Total Properties", total_properties, "0"),
-        ("Total Units", total_units, "#,##0"),
-        ("Portfolio Avg Occupancy", portfolio_avg_occ, "0.0%"),
-        ("Total Monthly NOI", total_monthly_noi, "$#,##0.00"),
-        ("Avg Delinquency Rate", avg_delinquency, "0.0%"),
-        ("Total AUM", total_aum, "$#,##0.00"),
+        ("Total Properties", "=COUNTA(Properties!A2:A1000)", "0"),
+        ("Total Units", "=SUM(Properties!F:F)", "#,##0"),
+        (
+            "Portfolio Avg Occupancy",
+            "=SUMIFS(Occupancy!E:E,Occupancy!D:D,MAX(Occupancy!D:D))/SUMIFS(Occupancy!F:F,Occupancy!D:D,MAX(Occupancy!D:D))",
+            "0.0%",
+        ),
+        (
+            "Total Monthly NOI",
+            "=SUMIFS(Financials!G:G,Financials!D:D,MAX(Financials!D:D))",
+            "$#,##0.00",
+        ),
+        (
+            "Avg Delinquency Rate",
+            "=SUMIFS(Delinquency!G:G,Delinquency!D:D,MAX(Delinquency!D:D))/SUMIFS(Delinquency!E:E,Delinquency!D:D,MAX(Delinquency!D:D))",
+            "0.0%",
+        ),
+        ("Total AUM", "=SUM(Properties!H:H)", "$#,##0.00"),
     ]
 
     card_spans = [(1, 2), (3, 4), (5, 6), (7, 8), (9, 10), (11, 12)]
@@ -667,6 +673,11 @@ def build_dashboard_tab(
         value_cell.font = Font(name="Calibri", size=16, bold=True, color="FFFFFF")
         value_cell.alignment = Alignment(horizontal="center", vertical="center")
         value_cell.number_format = number_format
+
+    ws.merge_cells("A9:L9")
+    ws["A9"] = "Dashboard metrics are formula-driven from source tabs where practical."
+    ws["A9"].font = Font(name="Calibri", size=10, italic=True, color="666666")
+    ws["A9"].alignment = Alignment(horizontal="left", vertical="center")
 
     # Section B - Asset type comparison
     ws.merge_cells("A10:C10")
@@ -919,86 +930,41 @@ def build_acq_model_tab(wb: Workbook):
     ws["A2"].alignment = Alignment(horizontal="left", vertical="center")
 
     assumptions = [
-        ("Purchase Price", 4200000, "$#,##0.00"),
-        ("Total Units", 88, "0"),
-        ("Current Occupancy", 0.82, "0.0%"),
-        ("Stabilized Occupancy Target", 0.93, "0.0%"),
-        ("Current Avg Monthly Rent per Lot", 720, "$#,##0.00"),
-        ("Market Avg Rent", 810, "$#,##0.00"),
-        ("Year 1 Rent Growth", 0.045, "0.0%"),
-        ("Years 2-5 Rent Growth", 0.03, "0.0%"),
-        ("Operating Expense Ratio Year 1", 0.48, "0.0%"),
-        ("Expense Ratio Improvement", -0.01, "0.0%"),
-        ("Renovation CapEx Year 1", 380000, "$#,##0.00"),
-        ("Exit Cap Rate", 0.0625, "0.00%"),
-        ("Loan Amount", 2730000, "$#,##0.00"),
-        ("Interest Rate", 0.068, "0.0%"),
-        ("Loan Term", 10, "0"),
-        ("Acquisition Costs", 0.025, "0.0%"),
+        ("Assumption", "Value", None),
+        ("Purchase Price", 4200000, "$#,##0.00"),  # B4
+        ("Total Units", 88, "0"),  # B5
+        ("Current Occupancy", 0.82, "0.0%"),  # B6
+        ("Stabilized Occupancy Target", 0.93, "0.0%"),  # B7
+        ("Current Avg Monthly Rent per Lot", 720, "$#,##0.00"),  # B8
+        ("Market Avg Rent", 810, "$#,##0.00"),  # B9
+        ("Year 1 Rent Growth", 0.045, "0.0%"),  # B10
+        ("Years 2-5 Rent Growth", 0.03, "0.0%"),  # B11
+        ("Operating Expense Ratio Year 1", 0.48, "0.0%"),  # B12
+        ("Expense Ratio Improvement", -0.01, "0.0%"),  # B13
+        ("Renovation CapEx Year 1", 380000, "$#,##0.00"),  # B14
+        ("Exit Cap Rate", 0.0625, "0.00%"),  # B15
+        ("Loan Amount", "=B4*65%", "$#,##0.00"),  # B16 formula
+        ("Interest Rate", 0.068, "0.0%"),  # B17
+        ("Loan Term", 10, "0"),  # B18
+        ("Acquisition Costs", "=B4*2.5%", "$#,##0.00"),  # B19 formula
+        ("Initial Equity", "=B4-B16+B14+B19", "$#,##0.00"),  # B20 formula
     ]
 
     yellow_fill = PatternFill(fill_type="solid", fgColor="FFF2CC")
     for i, (label, value, fmt) in enumerate(assumptions, start=3):
         ws.cell(row=i, column=1, value=label)
         value_cell = ws.cell(row=i, column=2, value=value)
-        value_cell.number_format = fmt
-        value_cell.fill = yellow_fill
         for c in (1, 2):
             ws.cell(row=i, column=c).font = Font(name="Calibri", size=10)
             ws.cell(row=i, column=c).border = THIN_BORDER
-
-    ws.cell(row=3, column=1, value="Assumption").font = Font(name="Calibri", size=11, bold=True)
-    ws.cell(row=3, column=2, value="Value").font = Font(name="Calibri", size=11, bold=True)
-    ws.cell(row=3, column=1).fill = PatternFill(fill_type="solid", fgColor=DARK_NAVY)
-    ws.cell(row=3, column=2).fill = PatternFill(fill_type="solid", fgColor=DARK_NAVY)
-    ws.cell(row=3, column=1).font = Font(name="Calibri", size=11, bold=True, color="FFFFFF")
-    ws.cell(row=3, column=2).font = Font(name="Calibri", size=11, bold=True, color="FFFFFF")
-
-    # Model calculations
-    purchase_price = 4200000
-    total_units = 88
-    current_occupancy = 0.82
-    stabilized_occupancy = 0.93
-    current_rent = 720
-    year1_growth = 0.045
-    years_2_5_growth = 0.03
-    expense_ratio_y1 = 0.48
-    expense_improvement = -0.01
-    renovation_capex = 380000
-    exit_cap_rate = 0.0625
-    loan_amount = 2730000
-    interest_rate = 0.068
-    loan_term = 10
-    acquisition_cost_pct = 0.025
-    acquisition_costs = purchase_price * acquisition_cost_pct
-    initial_equity = purchase_price - loan_amount + renovation_capex + acquisition_costs
-
-    occupancy_rates = [0.84, 0.865, 0.89, 0.91, stabilized_occupancy]
-    avg_monthly_rents = [current_rent * (1 + year1_growth)]
-    for _ in range(4):
-        avg_monthly_rents.append(avg_monthly_rents[-1] * (1 + years_2_5_growth))
-    expense_ratios = [expense_ratio_y1 + (i * expense_improvement) for i in range(5)]
-
-    gpr = [total_units * r * 12 for r in avg_monthly_rents]
-    vacancy_loss = [gpr[i] * (1 - occupancy_rates[i]) for i in range(5)]
-    egi = [gpr[i] - vacancy_loss[i] for i in range(5)]
-    op_ex = [egi[i] * expense_ratios[i] for i in range(5)]
-    noi = [egi[i] - op_ex[i] for i in range(5)]
-    noi_margin = [noi[i] / egi[i] if egi[i] else 0 for i in range(5)]
-
-    # Annual debt service payment (P&I)
-    annual_rate = interest_rate
-    n_periods = loan_term
-    annual_debt_service = loan_amount * annual_rate / (1 - (1 + annual_rate) ** (-n_periods))
-    debt_service = [annual_debt_service] * 5
-
-    net_cash_flow = [noi[i] - debt_service[i] for i in range(5)]
-    coc_return = [net_cash_flow[i] / initial_equity for i in range(5)]
-    cumulative_cash_flow = []
-    running = 0
-    for val in net_cash_flow:
-        running += val
-        cumulative_cash_flow.append(running)
+        if i == 3:
+            ws.cell(row=i, column=1).fill = PatternFill(fill_type="solid", fgColor=DARK_NAVY)
+            ws.cell(row=i, column=2).fill = PatternFill(fill_type="solid", fgColor=DARK_NAVY)
+            ws.cell(row=i, column=1).font = Font(name="Calibri", size=11, bold=True, color="FFFFFF")
+            ws.cell(row=i, column=2).font = Font(name="Calibri", size=11, bold=True, color="FFFFFF")
+        else:
+            value_cell.fill = yellow_fill
+            value_cell.number_format = fmt
 
     # Pro forma layout
     ws.merge_cells("A22:F22")
@@ -1013,30 +979,66 @@ def build_acq_model_tab(wb: Workbook):
     style_custom_header(ws, 23, 1, 6)
 
     metrics = [
-        ("Occupied Units", [round(total_units * r, 0) for r in occupancy_rates], "0"),
-        ("Occupancy Rate", occupancy_rates, "0.0%"),
-        ("Avg Monthly Rent", avg_monthly_rents, "$#,##0.00"),
-        ("Gross Potential Rent Annual", gpr, "$#,##0.00"),
-        ("Vacancy Loss", vacancy_loss, "$#,##0.00"),
-        ("Effective Gross Income", egi, "$#,##0.00"),
-        ("Operating Expenses", op_ex, "$#,##0.00"),
-        ("NOI", noi, "$#,##0.00"),
-        ("NOI Margin %", noi_margin, "0.0%"),
-        ("Debt Service Annual P&I", debt_service, "$#,##0.00"),
-        ("Net Cash Flow After Debt", net_cash_flow, "$#,##0.00"),
-        ("Cash-on-Cash Return", coc_return, "0.0%"),
-        ("Cumulative Cash Flow", cumulative_cash_flow, "$#,##0.00"),
+        ("Occupied Units", "0"),
+        ("Occupancy Rate", "0.0%"),
+        ("Avg Monthly Rent", "$#,##0.00"),
+        ("Gross Potential Rent Annual", "$#,##0.00"),
+        ("Vacancy Loss", "$#,##0.00"),
+        ("Effective Gross Income", "$#,##0.00"),
+        ("Operating Expenses", "$#,##0.00"),
+        ("NOI", "$#,##0.00"),
+        ("NOI Margin %", "0.0%"),
+        ("Debt Service Annual P&I", "$#,##0.00"),
+        ("Net Cash Flow After Debt", "$#,##0.00"),
+        ("Cash-on-Cash Return", "0.0%"),
+        ("Cumulative Cash Flow", "$#,##0.00"),
     ]
 
-    for row_offset, (metric_name, values, fmt) in enumerate(metrics, start=24):
+    for row_offset, (metric_name, fmt) in enumerate(metrics, start=24):
         ws.cell(row=row_offset, column=1, value=metric_name)
         ws.cell(row=row_offset, column=1).font = Font(name="Calibri", size=10)
         ws.cell(row=row_offset, column=1).border = THIN_BORDER
-        for i, value in enumerate(values, start=2):
-            cell = ws.cell(row=row_offset, column=i, value=float(value))
+        for i in range(2, 7):
+            cell = ws.cell(row=row_offset, column=i)
             cell.number_format = fmt
             cell.font = Font(name="Calibri", size=10)
             cell.border = THIN_BORDER
+
+    # Formula-driven 5-year pro forma
+    ws["B25"] = "=MAX(84%,$B$6+2%)"
+    ws["C25"] = "=B25+($B$7-B25)/4"
+    ws["D25"] = "=C25+($B$7-B25)/4"
+    ws["E25"] = "=D25+($B$7-B25)/4"
+    ws["F25"] = "=$B$7"
+
+    ws["B24"] = "=$B$5*B25"
+    ws["C24"] = "=$B$5*C25"
+    ws["D24"] = "=$B$5*D25"
+    ws["E24"] = "=$B$5*E25"
+    ws["F24"] = "=$B$5*F25"
+
+    ws["B26"] = "=$B$8*(1+$B$10)"
+    ws["C26"] = "=B26*(1+$B$11)"
+    ws["D26"] = "=C26*(1+$B$11)"
+    ws["E26"] = "=D26*(1+$B$11)"
+    ws["F26"] = "=E26*(1+$B$11)"
+
+    for col in ["B", "C", "D", "E", "F"]:
+        ws[f"{col}27"] = f"=$B$5*{col}26*12"
+        ws[f"{col}28"] = f"={col}27*(1-{col}25)"
+        ws[f"{col}29"] = f"={col}27-{col}28"
+        ws[f"{col}30"] = f"={col}29*($B$12+(COLUMN({col}30)-COLUMN($B$30))*$B$13)"
+        ws[f"{col}31"] = f"={col}29-{col}30"
+        ws[f"{col}32"] = f"=IFERROR({col}31/{col}29,0)"
+        ws[f"{col}33"] = "=-PMT($B$17,$B$18,$B$16)"
+        ws[f"{col}34"] = f"={col}31-{col}33"
+        ws[f"{col}35"] = f"=IFERROR({col}34/$B$20,0)"
+
+    ws["B36"] = "=B34"
+    ws["C36"] = "=B36+C34"
+    ws["D36"] = "=C36+D34"
+    ws["E36"] = "=D36+E34"
+    ws["F36"] = "=E36+F34"
 
     # Exit analysis
     ws.merge_cells("A39:D39")
@@ -1044,37 +1046,42 @@ def build_acq_model_tab(wb: Workbook):
     ws["A39"].font = Font(name="Calibri", size=12, bold=True, color="FFFFFF")
     ws["A39"].fill = PatternFill(fill_type="solid", fgColor=DARK_NAVY)
 
-    years_paid = 5
-    remaining_balance = (
-        loan_amount * ((1 + annual_rate) ** years_paid)
-        - annual_debt_service * ((((1 + annual_rate) ** years_paid) - 1) / annual_rate)
-    )
-    year5_exit_value = noi[4] / exit_cap_rate
-    net_proceeds = year5_exit_value - remaining_balance
-    total_return = net_proceeds + cumulative_cash_flow[4]
-    equity_multiple = total_return / initial_equity
-
-    cashflows = [-initial_equity] + net_cash_flow[:4] + [net_cash_flow[4] + net_proceeds]
-    irr = calculate_irr(cashflows)
-
     exit_rows = [
-        ("Year 5 Exit Value", year5_exit_value, "$#,##0.00"),
-        ("Remaining Loan Balance after 5 years", remaining_balance, "$#,##0.00"),
-        ("Net Proceeds", net_proceeds, "$#,##0.00"),
-        ("Cumulative Cash Flow", cumulative_cash_flow[4], "$#,##0.00"),
-        ("Total Return", total_return, "$#,##0.00"),
-        ("Initial Equity", initial_equity, "$#,##0.00"),
-        ("Equity Multiple", equity_multiple, "0.00x"),
-        ("IRR", irr, "0.0%"),
+        ("Year 5 Exit Value", "=F31/$B$15", "$#,##0.00"),
+        (
+            "Remaining Loan Balance after 5 years",
+            "=$B$16*(1+$B$17)^5-B33*(((1+$B$17)^5-1)/$B$17)",
+            "$#,##0.00",
+        ),
+        ("Net Proceeds", "=B41-B42", "$#,##0.00"),
+        ("Cumulative Cash Flow", "=F36", "$#,##0.00"),
+        ("Total Return", "=B43+B44", "$#,##0.00"),
+        ("Initial Equity", "=B20", "$#,##0.00"),
+        ("Equity Multiple", "=IFERROR(B45/B46,0)", "0.00x"),
+        ("IRR", "=IRR(B49:G49)", "0.0%"),
     ]
 
     for idx, (label, value, fmt) in enumerate(exit_rows, start=40):
         ws.cell(row=idx, column=1, value=label)
-        val_cell = ws.cell(row=idx, column=2, value=float(value))
+        val_cell = ws.cell(row=idx, column=2, value=value)
         val_cell.number_format = fmt
         for c in (1, 2):
             ws.cell(row=idx, column=c).font = Font(name="Calibri", size=10)
             ws.cell(row=idx, column=c).border = THIN_BORDER
+
+    # IRR cash flow series
+    ws["A49"] = "IRR Cash Flows (Year 0 to Year 5)"
+    ws["A49"].font = Font(name="Calibri", size=10, bold=True)
+    ws["B49"] = "=-$B$20"
+    ws["C49"] = "=B34"
+    ws["D49"] = "=C34"
+    ws["E49"] = "=D34"
+    ws["F49"] = "=E34"
+    ws["G49"] = "=F34+$B$43"
+    for col in ["B", "C", "D", "E", "F", "G"]:
+        ws[f"{col}49"].number_format = "$#,##0.00"
+        ws[f"{col}49"].border = THIN_BORDER
+        ws[f"{col}49"].font = Font(name="Calibri", size=10)
 
     # Sensitivity table
     ws.merge_cells("A50:F50")
@@ -1090,29 +1097,44 @@ def build_acq_model_tab(wb: Workbook):
         ws.cell(row=51, column=j, value=label)
     style_custom_header(ws, 51, 1, 6)
 
-    for i, cap in enumerate(cap_rates, start=52):
+    # scenario multipliers helper row
+    for j, (_, mult) in enumerate(noi_scenarios, start=2):
+        ws.cell(row=53, column=j, value=mult)
+        ws.cell(row=53, column=j).number_format = "0%"
+
+    for i, cap in enumerate(cap_rates, start=54):
         ws.cell(row=i, column=1, value=cap)
         ws.cell(row=i, column=1).number_format = "0.00%"
         ws.cell(row=i, column=1).font = Font(name="Calibri", size=10)
         ws.cell(row=i, column=1).border = THIN_BORDER
 
-        for j, (_, mult) in enumerate(noi_scenarios, start=2):
-            adjusted_noi = noi[4] * mult
-            exit_value = adjusted_noi / cap
-            net_proceeds_sens = exit_value - remaining_balance
-            final_year_cf = net_cash_flow[4] + net_proceeds_sens
-            irr_sens = calculate_irr([-initial_equity] + net_cash_flow[:4] + [final_year_cf])
-
-            cell = ws.cell(row=i, column=j, value=float(irr_sens))
+        for j, _ in enumerate(noi_scenarios, start=2):
+            col = get_column_letter(j)
+            formula = (
+                f'=IRR(CHOOSE(ROW(INDIRECT("1:6")),-$B$20,$B$34,$C$34,$D$34,$E$34,'
+                f'$F$34+((($F$31*{col}$53)/$A{i})-$B$42)))'
+            )
+            cell = ws.cell(row=i, column=j, value=formula)
             cell.number_format = "0.0%"
             cell.font = Font(name="Calibri", size=10)
             cell.border = THIN_BORDER
-            if irr_sens > 0.15:
-                cell.fill = PatternFill(fill_type="solid", fgColor=GREEN_FILL)
-            elif irr_sens >= 0.10:
-                cell.fill = PatternFill(fill_type="solid", fgColor=YELLOW_FILL)
-            else:
-                cell.fill = PatternFill(fill_type="solid", fgColor=RED_FILL)
+
+    ws.conditional_formatting.add(
+        "B54:F60",
+        CellIsRule(operator="greaterThan", formula=["0.15"], fill=PatternFill(fill_type="solid", fgColor=GREEN_FILL)),
+    )
+    ws.conditional_formatting.add(
+        "B54:F60",
+        CellIsRule(
+            operator="between",
+            formula=["0.10", "0.15"],
+            fill=PatternFill(fill_type="solid", fgColor=YELLOW_FILL),
+        ),
+    )
+    ws.conditional_formatting.add(
+        "B54:F60",
+        CellIsRule(operator="lessThan", formula=["0.10"], fill=PatternFill(fill_type="solid", fgColor=RED_FILL)),
+    )
 
     auto_fit_columns(ws)
 
@@ -1237,7 +1259,7 @@ def main():
 
     wb.save(OUTPUT_PATH)
 
-    print("Final workbook complete with 10 tabs: excel/portfolio_dashboard.xlsx")
+    print("Workbook updated with visible Excel formulas in Dashboard and Acq. Model.")
     print(f"Sheets created: {', '.join(wb.sheetnames)}")
 
 

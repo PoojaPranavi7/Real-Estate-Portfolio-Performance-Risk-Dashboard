@@ -1,11 +1,7 @@
 # Executive Summary — Real Estate Portfolio Performance & Risk Dashboard
 
 ## Portfolio Header
-- Portfolio size: 12 properties
-- Asset mix: 2 asset types
-- Market coverage: 5 markets
-- Reporting period: January–December 2024
-- Asset types: Manufactured Housing and Self-Storage
+This portfolio performance package summarizes operational and financial trends across **12 properties** spanning **2 asset types** in **5 markets**. The reporting period is **January–December 2024**, and the analysis covers both **Manufactured Housing** and **Self-Storage** assets. The objective is to provide a concise executive view of what is performing, what is drifting, and where targeted value-add action should be prioritized.
 
 ## Portfolio Scorecard
 | Property | Occupancy | Delinquency | NOI Margin | CapEx Status | Overall Status |
@@ -24,16 +20,16 @@
 | Summit Storage (STG-05) | 89.4% | 6.3% | 46.8% | Completed | Stable |
 
 ## Properties Requiring Immediate Attention
-1. **MHC-03 Canyon Ridge** — Launch an immediate operational review of leasing execution, resident retention, rent positioning, and collections cadence to stabilize both occupancy and payment performance.
-2. **STG-02 SunState Storage** — Conduct a focused collections intervention on aged receivables, payment reminders, and property-level collections workflow to stop delinquency escalation.
-3. **STG-03 Desert Vault** — Perform a controllable expense deep dive across vendor contracts, payroll, utilities, and repairs to relieve NOI margin pressure.
+1. **MHC-03 Canyon Ridge** — Initiate an immediate operational review of leasing throughput, resident retention, rent positioning, and collections process to stabilize both demand and payment performance.
+2. **STG-02 SunState Storage** — Prioritize a collections intervention focused on aged receivables, payment reminders, and property-level collections workflow discipline.
+3. **STG-03 Desert Vault** — Launch a targeted expense review of controllable costs, including vendor contracts, payroll, utilities, and repairs, to improve NOI margin.
 
 ## Properties Showing Positive Momentum
-1. **MHC-05 Pinon Pines** — Occupancy is improving and value-add execution is progressing, indicating that renovation and operational initiatives are moving in the right direction.
-2. **STG-04 Basin Self Storage** — The asset is recovering from low occupancy and trending toward a healthier stabilized operating range.
+1. **MHC-05 Pinon Pines** — Occupancy has improved through the year and value-add execution is showing positive operating momentum.
+2. **STG-04 Basin Self Storage** — Performance is recovering from low occupancy and progressing toward a healthier stabilized range.
 
 ## Acquisition Opportunity
-MHC-05 Pinon Pines is the portfolio’s value-add acquisition case study. The underwriting base includes a purchase price of **$4.2M** and **$380K** of renovation CapEx, with a stabilized occupancy target of **93%**. Current average rent of **$720** indicates measurable market upside toward **$810**. The acquisition pro forma should be monitored monthly against actual occupancy, rent growth, NOI, and CapEx spend to confirm execution is tracking to plan.
+MHC-05 Pinon Pines remains the portfolio’s value-add acquisition case study. The underwriting baseline assumes a **$4.2M purchase price**, **$380K renovation CapEx**, and a **93% stabilized occupancy target**. The asset also has clear rent upside, with in-place rent near **$720** versus market rent around **$810**. The pro forma should be monitored monthly against actual occupancy, rent growth, NOI, and CapEx spend to ensure execution remains on plan.
 
 ## Sign-Off
-Prepared by: [Your Name] | Date: December 2024
+Prepared by: Pooja Pranavi Nalamothu | Date: May 2026
