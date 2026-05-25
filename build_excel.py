@@ -879,6 +879,338 @@ def build_dashboard_tab(
     auto_fit_columns(ws)
 
 
+def calculate_irr(cashflows, low=-0.95, high=1.5, tol=1e-7, max_iter=200):
+    def npv(rate):
+        return sum(cf / ((1 + rate) ** i) for i, cf in enumerate(cashflows))
+
+    npv_low = npv(low)
+    npv_high = npv(high)
+    if npv_low * npv_high > 0:
+        return 0.0
+
+    for _ in range(max_iter):
+        mid = (low + high) / 2
+        npv_mid = npv(mid)
+        if abs(npv_mid) < tol:
+            return mid
+        if npv_low * npv_mid < 0:
+            high = mid
+            npv_high = npv_mid
+        else:
+            low = mid
+            npv_low = npv_mid
+    return mid
+
+
+def build_acq_model_tab(wb: Workbook):
+    ws = wb.create_sheet("Acq. Model")
+    ws.sheet_properties.tabColor = "FFD700"
+
+    ws.merge_cells("A1:F1")
+    ws["A1"] = "Acquisition Underwriting — MHC-05 Pinon Pines"
+    ws["A1"].font = Font(name="Calibri", size=16, bold=True, color=DARK_NAVY)
+    ws["A1"].alignment = Alignment(horizontal="left", vertical="center")
+
+    # Assumptions
+    ws.merge_cells("A2:C2")
+    ws["A2"] = "Underwriting Assumptions"
+    ws["A2"].font = Font(name="Calibri", size=12, bold=True, color="FFFFFF")
+    ws["A2"].fill = PatternFill(fill_type="solid", fgColor=DARK_NAVY)
+    ws["A2"].alignment = Alignment(horizontal="left", vertical="center")
+
+    assumptions = [
+        ("Purchase Price", 4200000, "$#,##0.00"),
+        ("Total Units", 88, "0"),
+        ("Current Occupancy", 0.82, "0.0%"),
+        ("Stabilized Occupancy Target", 0.93, "0.0%"),
+        ("Current Avg Monthly Rent per Lot", 720, "$#,##0.00"),
+        ("Market Avg Rent", 810, "$#,##0.00"),
+        ("Year 1 Rent Growth", 0.045, "0.0%"),
+        ("Years 2-5 Rent Growth", 0.03, "0.0%"),
+        ("Operating Expense Ratio Year 1", 0.48, "0.0%"),
+        ("Expense Ratio Improvement", -0.01, "0.0%"),
+        ("Renovation CapEx Year 1", 380000, "$#,##0.00"),
+        ("Exit Cap Rate", 0.0625, "0.00%"),
+        ("Loan Amount", 2730000, "$#,##0.00"),
+        ("Interest Rate", 0.068, "0.0%"),
+        ("Loan Term", 10, "0"),
+        ("Acquisition Costs", 0.025, "0.0%"),
+    ]
+
+    yellow_fill = PatternFill(fill_type="solid", fgColor="FFF2CC")
+    for i, (label, value, fmt) in enumerate(assumptions, start=3):
+        ws.cell(row=i, column=1, value=label)
+        value_cell = ws.cell(row=i, column=2, value=value)
+        value_cell.number_format = fmt
+        value_cell.fill = yellow_fill
+        for c in (1, 2):
+            ws.cell(row=i, column=c).font = Font(name="Calibri", size=10)
+            ws.cell(row=i, column=c).border = THIN_BORDER
+
+    ws.cell(row=3, column=1, value="Assumption").font = Font(name="Calibri", size=11, bold=True)
+    ws.cell(row=3, column=2, value="Value").font = Font(name="Calibri", size=11, bold=True)
+    ws.cell(row=3, column=1).fill = PatternFill(fill_type="solid", fgColor=DARK_NAVY)
+    ws.cell(row=3, column=2).fill = PatternFill(fill_type="solid", fgColor=DARK_NAVY)
+    ws.cell(row=3, column=1).font = Font(name="Calibri", size=11, bold=True, color="FFFFFF")
+    ws.cell(row=3, column=2).font = Font(name="Calibri", size=11, bold=True, color="FFFFFF")
+
+    # Model calculations
+    purchase_price = 4200000
+    total_units = 88
+    current_occupancy = 0.82
+    stabilized_occupancy = 0.93
+    current_rent = 720
+    year1_growth = 0.045
+    years_2_5_growth = 0.03
+    expense_ratio_y1 = 0.48
+    expense_improvement = -0.01
+    renovation_capex = 380000
+    exit_cap_rate = 0.0625
+    loan_amount = 2730000
+    interest_rate = 0.068
+    loan_term = 10
+    acquisition_cost_pct = 0.025
+    acquisition_costs = purchase_price * acquisition_cost_pct
+    initial_equity = purchase_price - loan_amount + renovation_capex + acquisition_costs
+
+    occupancy_rates = [0.84, 0.865, 0.89, 0.91, stabilized_occupancy]
+    avg_monthly_rents = [current_rent * (1 + year1_growth)]
+    for _ in range(4):
+        avg_monthly_rents.append(avg_monthly_rents[-1] * (1 + years_2_5_growth))
+    expense_ratios = [expense_ratio_y1 + (i * expense_improvement) for i in range(5)]
+
+    gpr = [total_units * r * 12 for r in avg_monthly_rents]
+    vacancy_loss = [gpr[i] * (1 - occupancy_rates[i]) for i in range(5)]
+    egi = [gpr[i] - vacancy_loss[i] for i in range(5)]
+    op_ex = [egi[i] * expense_ratios[i] for i in range(5)]
+    noi = [egi[i] - op_ex[i] for i in range(5)]
+    noi_margin = [noi[i] / egi[i] if egi[i] else 0 for i in range(5)]
+
+    # Annual debt service payment (P&I)
+    annual_rate = interest_rate
+    n_periods = loan_term
+    annual_debt_service = loan_amount * annual_rate / (1 - (1 + annual_rate) ** (-n_periods))
+    debt_service = [annual_debt_service] * 5
+
+    net_cash_flow = [noi[i] - debt_service[i] for i in range(5)]
+    coc_return = [net_cash_flow[i] / initial_equity for i in range(5)]
+    cumulative_cash_flow = []
+    running = 0
+    for val in net_cash_flow:
+        running += val
+        cumulative_cash_flow.append(running)
+
+    # Pro forma layout
+    ws.merge_cells("A22:F22")
+    ws["A22"] = "5-Year Operating Pro Forma"
+    ws["A22"].font = Font(name="Calibri", size=12, bold=True, color="FFFFFF")
+    ws["A22"].fill = PatternFill(fill_type="solid", fgColor=DARK_NAVY)
+    ws["A22"].alignment = Alignment(horizontal="left", vertical="center")
+
+    ws.cell(row=23, column=1, value="Metric")
+    for i in range(1, 6):
+        ws.cell(row=23, column=i + 1, value=f"Year {i}")
+    style_custom_header(ws, 23, 1, 6)
+
+    metrics = [
+        ("Occupied Units", [round(total_units * r, 0) for r in occupancy_rates], "0"),
+        ("Occupancy Rate", occupancy_rates, "0.0%"),
+        ("Avg Monthly Rent", avg_monthly_rents, "$#,##0.00"),
+        ("Gross Potential Rent Annual", gpr, "$#,##0.00"),
+        ("Vacancy Loss", vacancy_loss, "$#,##0.00"),
+        ("Effective Gross Income", egi, "$#,##0.00"),
+        ("Operating Expenses", op_ex, "$#,##0.00"),
+        ("NOI", noi, "$#,##0.00"),
+        ("NOI Margin %", noi_margin, "0.0%"),
+        ("Debt Service Annual P&I", debt_service, "$#,##0.00"),
+        ("Net Cash Flow After Debt", net_cash_flow, "$#,##0.00"),
+        ("Cash-on-Cash Return", coc_return, "0.0%"),
+        ("Cumulative Cash Flow", cumulative_cash_flow, "$#,##0.00"),
+    ]
+
+    for row_offset, (metric_name, values, fmt) in enumerate(metrics, start=24):
+        ws.cell(row=row_offset, column=1, value=metric_name)
+        ws.cell(row=row_offset, column=1).font = Font(name="Calibri", size=10)
+        ws.cell(row=row_offset, column=1).border = THIN_BORDER
+        for i, value in enumerate(values, start=2):
+            cell = ws.cell(row=row_offset, column=i, value=float(value))
+            cell.number_format = fmt
+            cell.font = Font(name="Calibri", size=10)
+            cell.border = THIN_BORDER
+
+    # Exit analysis
+    ws.merge_cells("A39:D39")
+    ws["A39"] = "Exit Analysis"
+    ws["A39"].font = Font(name="Calibri", size=12, bold=True, color="FFFFFF")
+    ws["A39"].fill = PatternFill(fill_type="solid", fgColor=DARK_NAVY)
+
+    years_paid = 5
+    remaining_balance = (
+        loan_amount * ((1 + annual_rate) ** years_paid)
+        - annual_debt_service * ((((1 + annual_rate) ** years_paid) - 1) / annual_rate)
+    )
+    year5_exit_value = noi[4] / exit_cap_rate
+    net_proceeds = year5_exit_value - remaining_balance
+    total_return = net_proceeds + cumulative_cash_flow[4]
+    equity_multiple = total_return / initial_equity
+
+    cashflows = [-initial_equity] + net_cash_flow[:4] + [net_cash_flow[4] + net_proceeds]
+    irr = calculate_irr(cashflows)
+
+    exit_rows = [
+        ("Year 5 Exit Value", year5_exit_value, "$#,##0.00"),
+        ("Remaining Loan Balance after 5 years", remaining_balance, "$#,##0.00"),
+        ("Net Proceeds", net_proceeds, "$#,##0.00"),
+        ("Cumulative Cash Flow", cumulative_cash_flow[4], "$#,##0.00"),
+        ("Total Return", total_return, "$#,##0.00"),
+        ("Initial Equity", initial_equity, "$#,##0.00"),
+        ("Equity Multiple", equity_multiple, "0.00x"),
+        ("IRR", irr, "0.0%"),
+    ]
+
+    for idx, (label, value, fmt) in enumerate(exit_rows, start=40):
+        ws.cell(row=idx, column=1, value=label)
+        val_cell = ws.cell(row=idx, column=2, value=float(value))
+        val_cell.number_format = fmt
+        for c in (1, 2):
+            ws.cell(row=idx, column=c).font = Font(name="Calibri", size=10)
+            ws.cell(row=idx, column=c).border = THIN_BORDER
+
+    # Sensitivity table
+    ws.merge_cells("A50:F50")
+    ws["A50"] = "IRR Sensitivity — Exit Cap Rate vs Year 5 NOI Scenario"
+    ws["A50"].font = Font(name="Calibri", size=12, bold=True, color="FFFFFF")
+    ws["A50"].fill = PatternFill(fill_type="solid", fgColor=DARK_NAVY)
+
+    cap_rates = [0.055, 0.0575, 0.06, 0.0625, 0.065, 0.0675, 0.07]
+    noi_scenarios = [("−5%", 0.95), ("0%", 1.00), ("Base", 1.00), ("+5%", 1.05), ("+10%", 1.10)]
+
+    ws.cell(row=51, column=1, value="Exit Cap Rate")
+    for j, (label, _) in enumerate(noi_scenarios, start=2):
+        ws.cell(row=51, column=j, value=label)
+    style_custom_header(ws, 51, 1, 6)
+
+    for i, cap in enumerate(cap_rates, start=52):
+        ws.cell(row=i, column=1, value=cap)
+        ws.cell(row=i, column=1).number_format = "0.00%"
+        ws.cell(row=i, column=1).font = Font(name="Calibri", size=10)
+        ws.cell(row=i, column=1).border = THIN_BORDER
+
+        for j, (_, mult) in enumerate(noi_scenarios, start=2):
+            adjusted_noi = noi[4] * mult
+            exit_value = adjusted_noi / cap
+            net_proceeds_sens = exit_value - remaining_balance
+            final_year_cf = net_cash_flow[4] + net_proceeds_sens
+            irr_sens = calculate_irr([-initial_equity] + net_cash_flow[:4] + [final_year_cf])
+
+            cell = ws.cell(row=i, column=j, value=float(irr_sens))
+            cell.number_format = "0.0%"
+            cell.font = Font(name="Calibri", size=10)
+            cell.border = THIN_BORDER
+            if irr_sens > 0.15:
+                cell.fill = PatternFill(fill_type="solid", fgColor=GREEN_FILL)
+            elif irr_sens >= 0.10:
+                cell.fill = PatternFill(fill_type="solid", fgColor=YELLOW_FILL)
+            else:
+                cell.fill = PatternFill(fill_type="solid", fgColor=RED_FILL)
+
+    auto_fit_columns(ws)
+
+
+def build_insights_tab(wb: Workbook):
+    ws = wb.create_sheet("Insights")
+    ws.sheet_properties.tabColor = "006100"
+
+    ws.merge_cells("A1:J1")
+    ws["A1"] = "Portfolio Findings & Recommended Actions"
+    ws["A1"].font = Font(name="Calibri", size=16, bold=True, color=DARK_NAVY)
+    ws["A1"].alignment = Alignment(horizontal="left", vertical="center")
+
+    ws.merge_cells("A2:J2")
+    ws["A2"] = "Based on 12-month data analysis, January–December 2024"
+    ws["A2"].font = Font(name="Calibri", size=11, color="666666")
+    ws["A2"].alignment = Alignment(horizontal="left", vertical="center")
+
+    findings = [
+        (
+            "STG-02: Collections Problem, Not a Demand Problem",
+            "SunState Storage | Self-Storage | Good occupancy but delinquency rising from approximately 7% to 13%",
+            "STG-02 maintained generally healthy occupancy, which suggests demand is not the primary issue. The bigger concern is the upward delinquency trend, meaning revenue leakage is coming from collections rather than lack of tenants.",
+            "Review aged receivables, late-fee enforcement, payment reminders, and property-level collection workflows. The asset management team should work with property operations to reduce delinquency before it impacts NOI further.",
+        ),
+        (
+            "MHC-03: Dual-Flag Asset Requiring Immediate Operational Review",
+            "Canyon Ridge | MHC | Low occupancy around 78–83% and high delinquency around 12–16%",
+            "MHC-03 is the weakest risk profile in the portfolio because it has both demand weakness and collections risk. This combination can pressure revenue, NOI, and investor reporting.",
+            "Prioritize an operational review covering leasing activity, local market positioning, rent levels, resident retention, and collections. This property should be included in weekly asset management follow-up until both occupancy and delinquency stabilize.",
+        ),
+        (
+            "MHC-04: Portfolio Benchmark — Operational Best Practices Template",
+            "Saguaro Estates | MHC | High occupancy, low delinquency, strong NOI margin",
+            "MHC-04 performs like a benchmark asset, with high occupancy, low delinquency, and strong profitability. This indicates strong property-level execution and stable resident demand.",
+            "Use MHC-04 as an internal operating benchmark. Compare staffing, collections process, leasing practices, resident communication, and expense controls against weaker MHC assets.",
+        ),
+        (
+            "MHC-05: Value-Add Play — Track Against Pro Forma Monthly",
+            "Pinon Pines | MHC | Occupancy improves from roughly 81% to 89% over the year",
+            "MHC-05 shows a positive value-add trend with improving occupancy, but it has not yet reached stabilized performance. The asset has rent upside and operational upside, making it a good candidate for active tracking.",
+            "Track MHC-05 monthly against the acquisition pro forma, especially occupancy, rent growth, CapEx spend, and NOI margin. Management should confirm that renovation dollars are converting into occupancy gains and stronger cash flow.",
+        ),
+        (
+            "STG-03: Expense Ratio Drag — NOI Underperformance Despite Adequate Occupancy",
+            "Desert Vault | Self-Storage | Expense ratio around 62–68%",
+            "STG-03 does not appear to be purely an occupancy problem. The high expense ratio is reducing NOI margin and making the property less profitable than it should be.",
+            "Review controllable expenses such as repairs, payroll, utilities, vendor contracts, insurance, and recurring maintenance. The finance and asset management teams should isolate which expense categories are driving margin compression.",
+        ),
+        (
+            "MHC-07: Early Warning — Delinquency Trend Requires Collections Intervention Before It Escalates",
+            "Mesa Vista | MHC | High occupancy but delinquency rising from approximately 5% to 11%",
+            "MHC-07 still has strong occupancy, but the delinquency trend is moving in the wrong direction. This is an early warning sign because the property looks healthy from an occupancy view but has growing collection risk.",
+            "Intervene before the issue becomes critical by reviewing tenant aging buckets, payment plan usage, late-fee timing, and property manager follow-up. This should be treated as a collections process issue before assuming a demand issue.",
+        ),
+    ]
+
+    row = 4
+    for title, metric, shows, action in findings:
+        ws.merge_cells(start_row=row, start_column=1, end_row=row, end_column=10)
+        ws.merge_cells(start_row=row + 1, start_column=1, end_row=row + 1, end_column=10)
+        ws.merge_cells(start_row=row + 2, start_column=1, end_row=row + 2, end_column=10)
+        ws.merge_cells(start_row=row + 3, start_column=1, end_row=row + 3, end_column=10)
+
+        title_cell = ws.cell(row=row, column=1, value=title)
+        metric_cell = ws.cell(row=row + 1, column=1, value=metric)
+        data_cell = ws.cell(row=row + 2, column=1, value=f"Data shows: {shows}")
+        action_cell = ws.cell(row=row + 3, column=1, value=f"Recommended action: {action}")
+
+        title_cell.fill = PatternFill(fill_type="solid", fgColor=DARK_NAVY)
+        title_cell.font = Font(name="Calibri", size=11, bold=True, color="FFFFFF")
+
+        metric_cell.fill = PatternFill(fill_type="solid", fgColor=LIGHT_BLUE)
+        metric_cell.font = Font(name="Calibri", size=10, bold=True, color="000000")
+
+        data_cell.fill = PatternFill(fill_type="solid", fgColor=WHITE)
+        data_cell.font = Font(name="Calibri", size=10)
+
+        action_cell.fill = PatternFill(fill_type="solid", fgColor=LIGHT_GREEN)
+        action_cell.font = Font(name="Calibri", size=10, italic=True)
+
+        for r in range(row, row + 4):
+            cell = ws.cell(row=r, column=1)
+            cell.alignment = Alignment(horizontal="left", vertical="top", wrap_text=True)
+            for c in range(1, 11):
+                ws.cell(row=r, column=c).border = THIN_BORDER
+
+        ws.row_dimensions[row].height = 28
+        ws.row_dimensions[row + 1].height = 30
+        ws.row_dimensions[row + 2].height = 55
+        ws.row_dimensions[row + 3].height = 55
+        row += 5
+
+    for col in range(1, 11):
+        ws.column_dimensions[get_column_letter(col)].width = 14
+    ws.column_dimensions["A"].width = 20
+
+
 def main():
     OUTPUT_PATH.parent.mkdir(parents=True, exist_ok=True)
 
@@ -900,10 +1232,12 @@ def main():
     build_market_comps_tab(wb, properties_df, market_df)
     build_capex_tab(wb, properties_df, capex_df)
     build_dashboard_tab(wb, properties_df, occupancy_df, delinquency_df, financials_df)
+    build_acq_model_tab(wb)
+    build_insights_tab(wb)
 
     wb.save(OUTPUT_PATH)
 
-    print("Updated workbook with Tabs 1–8: excel/portfolio_dashboard.xlsx")
+    print("Final workbook complete with 10 tabs: excel/portfolio_dashboard.xlsx")
     print(f"Sheets created: {', '.join(wb.sheetnames)}")
 
 
