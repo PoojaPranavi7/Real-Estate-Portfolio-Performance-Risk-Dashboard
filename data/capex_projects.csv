@@ -1,0 +1,13 @@
+property_id,project_name,project_type,start_date,end_date,budgeted_cost,actual_cost,status,variance
+MHC-01,Entry Road Regrade,Road Repair,2024-02-15,2024-05-30,180000.0,187276.61,Completed,7276.61
+MHC-02,Perimeter Fence Refresh,Fencing,2024-03-01,2024-06-20,95000.0,97479.0,Completed,2479.0
+MHC-03,Drainage and Pad Stabilization,Paving,2024-01-20,2024-09-15,420000.0,448403.28,Active,28403.28
+MHC-04,Clubhouse Modernization,Clubhouse Renovation,2024-04-10,2024-08-30,260000.0,234184.75,Completed,-25815.25
+MHC-05,Community-Wide Unit Upgrade Program,Unit Upgrade,2024-01-10,2024-12-20,780000.0,885148.88,Active,105148.88
+MHC-06,Domestic Water Loop Upgrade,Water System,2024-05-01,2024-10-31,310000.0,302823.2,Active,-7176.8
+MHC-07,Monument Sign Replacement,Signage,2024-06-05,2024-07-25,42000.0,43159.45,Completed,1159.45
+STG-01,Exterior Lighting and CCTV,HVAC,2024-02-12,2024-04-30,165000.0,166499.23,Completed,1499.23
+STG-02,Drive Aisle Resurfacing,Paving,2024-03-20,2024-08-10,240000.0,267795.95,Completed,27795.95
+STG-03,HVAC Retrofit for Climate Units,HVAC,2024-01-15,2024-11-15,520000.0,576711.69,Active,56711.69
+STG-04,Security Gate and Fence Overhaul,Fencing,2024-04-01,2024-09-30,210000.0,198494.77,Completed,-11505.23
+STG-05,Leasing Office Interior Refresh,Clubhouse Renovation,2024-07-01,2024-10-30,125000.0,116794.69,Completed,-8205.31

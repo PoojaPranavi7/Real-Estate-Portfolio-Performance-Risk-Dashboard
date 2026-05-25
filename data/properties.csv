@@ -1,0 +1,13 @@
+property_id,property_name,asset_type,city,state,total_units,year_acquired,purchase_price
+MHC-01,Sunrise Meadows,MHC,Las Vegas,NV,120,2018,9400000
+MHC-02,Desert Palms,MHC,Henderson,NV,95,2019,7100000
+MHC-03,Canyon Ridge,MHC,Tucson,AZ,110,2020,6900000
+MHC-04,Saguaro Estates,MHC,Phoenix,AZ,140,2017,12800000
+MHC-05,Pinon Pines,MHC,Albuquerque,NM,88,2021,5950000
+MHC-06,Red Rock Commons,MHC,St. George,UT,102,2018,7850000
+MHC-07,Mesa Vista,MHC,Mesa,AZ,115,2019,8600000
+STG-01,ClearBox Storage,Self-Storage,Las Vegas,NV,280,2016,10500000
+STG-02,SunState Storage,Self-Storage,Scottsdale,AZ,320,2018,13900000
+STG-03,Desert Vault,Self-Storage,Tucson,AZ,240,2017,9850000
+STG-04,Basin Self Storage,Self-Storage,Reno,NV,195,2022,7400000
+STG-05,Summit Storage,Self-Storage,Salt Lake City,UT,260,2019,11250000
